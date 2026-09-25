@@ -1,12 +1,15 @@
+import ComposableArchitecture
 import SwiftUI
 
-/// Temporary bootstrap kept only so the application target remains buildable
-/// while the presentation layer is rebuilt from scratch.
 @main
 struct iADBApp: App {
+    @State private var store = Store(initialState: AppFeature.State()) {
+        AppFeature()
+    }
+
     var body: some Scene {
         WindowGroup {
-            EmptyView()
+            RootView(store: store)
         }
     }
 }

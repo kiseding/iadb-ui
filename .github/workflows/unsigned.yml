@@ -1,12 +1,17 @@
 name: Unsigned IPA
 
+# Every push is a commit landing on the repository, including non-main branches.
+# Each one produces its own unsigned IPA artifact.
 on:
   push:
-    branches: [main]
   workflow_dispatch:
 
 permissions:
   contents: read
+
+concurrency:
+  group: unsigned-ipa-${{ github.sha }}
+  cancel-in-progress: false
 
 jobs:
   build:

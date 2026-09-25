@@ -11,13 +11,15 @@ struct ConnectionFeature {
         var connectionState: ConnectionState = .disconnected
         var connectedDevice: DiscoveredDevice?
         var errorMessage: String?
-
+        /// User explicitly stopped Bonjour. Automatic refreshes must not resume it.
+        var discoveryPaused = false
     }
 
     enum Action {
         case loadSavedDevices
         case savedDevicesLoaded(Result<[PairedDevice], Error>)
         case startDiscovery
+        case refreshDiscovery
         case discoveryEvent(DeviceDiscoveryEvent)
         case stopDiscovery
         case connect(DiscoveredDevice)
@@ -55,6 +57,7 @@ struct ConnectionFeature {
                 return .none
 
             case .startDiscovery:
+                state.discoveryPaused = false
                 state.isScanning = true
                 state.errorMessage = nil
                 let keys = state.pairedDevices.map(\.publicKey)
@@ -78,7 +81,12 @@ struct ConnectionFeature {
                 state.errorMessage = message
                 return .none
 
+            case .refreshDiscovery:
+                guard !state.discoveryPaused else { return .none }
+                return .send(.startDiscovery)
+
             case .stopDiscovery:
+                state.discoveryPaused = true
                 state.isScanning = false
                 discoveryClient.stop()
                 return .cancel(id: CancelID.discovery)
@@ -114,7 +122,11 @@ struct ConnectionFeature {
                 return .cancel(id: CancelID.connection)
 
             case .savePairedDevice(let device):
-                var devices = state.pairedDevices.filter { $0.id != device.id }
+                var devices = state.pairedDevices.filter { existing in
+                    if existing.id == device.id { return false }
+                    if !device.guid.isEmpty, existing.guid == device.guid { return false }
+                    return true
+                }
                 devices.append(device)
                 let savedDevices = devices
                 return .run { send in

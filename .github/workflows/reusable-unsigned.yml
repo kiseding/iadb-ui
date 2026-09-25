@@ -42,6 +42,18 @@ jobs:
           if-no-files-found: error
           retention-days: 30
 
+      - name: Summarize IPA
+        run: |
+          {
+            echo "### iADB unsigned IPA"
+            echo ""
+            echo "- Ref: \`${{ github.ref_name }}\`"
+            echo "- Commit: \`${{ github.sha }}\`"
+            echo "- File: \`$(basename "${{ steps.package.outputs.ipa_path }}")\`"
+            echo ""
+            echo "The archive is unsigned. Sign it with a development or distribution certificate before installing on a device."
+          } >> "$GITHUB_STEP_SUMMARY"
+
       - name: Upload build log
         if: always()
         uses: actions/upload-artifact@v4

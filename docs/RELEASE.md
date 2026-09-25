@@ -3,7 +3,7 @@
 GitHub Actions are split by purpose:
 
 - `Pull Request Checks` builds the app and runs unit/UI tests for pull requests.
-- `Unsigned IPA` builds an unsigned IPA on every push to `main` and on manual runs.
+- `Unsigned IPA` builds an unsigned IPA on every push, on every branch, and on manual runs.
 - `TestFlight` is a manual signed build and upload to App Store Connect.
 - `Release` runs for `vMAJOR.MINOR.PATCH` tags, builds the unsigned IPA, uploads the same
   version/build to TestFlight, and publishes the unsigned IPA in a GitHub release.

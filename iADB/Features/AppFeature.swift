@@ -16,6 +16,7 @@ struct AppFeature {
     }
 
     enum Action {
+        case bootstrap
         case connection(ConnectionFeature.Action)
         case pairing(PairingFeature.Action)
         case deviceInfo(DeviceInfoFeature.Action)
@@ -37,7 +38,43 @@ struct AppFeature {
         Scope(state: \.screenshots, action: \.screenshots) { ScreenshotFeature() }
 
         Reduce { state, action in
+            func releaseSession() -> Effect<Action> {
+                .merge(
+                    .send(.deviceInfo(.cancel)),
+                    .send(.apps(.setConnected(false))),
+                    .send(.files(.setConnected(false))),
+                    .send(.shell(.setConnected(false))),
+                    .send(.logcat(.setConnected(false))),
+                    .send(.screenshots(.setConnected(false)))
+                )
+            }
+
             switch action {
+            case .bootstrap:
+                return .merge(
+                    .send(.connection(.loadSavedDevices)),
+                    .send(.shell(.loadHistory)),
+                    .send(.screenshots(.load))
+                )
+
+            case .connection(.savedDevicesLoaded),
+                 .connection(.pairedDeviceSaved(.success)),
+                 .connection(.deviceForgotten(.success)):
+                return .send(.connection(.refreshDiscovery))
+
+            case .pairing(.completed(let name, let guid)):
+                let host = state.pairing.host.trimmingCharacters(in: .whitespacesAndNewlines)
+                let device = PairedDevice(
+                    name: name.isEmpty ? host : name,
+                    guid: guid,
+                    lastHost: host,
+                    lastPort: UInt16(state.pairing.port)
+                )
+                return .merge(
+                    .send(.connection(.savePairedDevice(device))),
+                    .send(.connection(.startDiscovery))
+                )
+
             case .connection(.connectionFinished(let device, .success)):
                 let identity = DeviceIdentity.resolved(
                     from: device,
@@ -58,13 +95,12 @@ struct AppFeature {
 
             case .connection(.connectionFinished(_, .failure)),
                  .connection(.disconnect):
+                return releaseSession()
+
+            case .connection(.identityReset(.success)):
                 return .merge(
-                    .send(.deviceInfo(.cancel)),
-                    .send(.apps(.setConnected(false))),
-                    .send(.files(.setConnected(false))),
-                    .send(.shell(.setConnected(false))),
-                    .send(.logcat(.setConnected(false))),
-                    .send(.screenshots(.setConnected(false)))
+                    releaseSession(),
+                    .send(.connection(.startDiscovery))
                 )
 
             default:
