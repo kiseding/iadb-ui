@@ -50,7 +50,7 @@ struct DeviceInfoView: View {
             store.send(.deviceInfo(.fetch))
         }
         .confirmationDialog(
-            "Reboot the Android device?",
+            Text("Reboot the Android device?"),
             isPresented: Binding(
                 get: { rebootChoice != nil },
                 set: { if !$0 { rebootChoice = nil } }
@@ -58,12 +58,12 @@ struct DeviceInfoView: View {
             titleVisibility: .visible,
             presenting: rebootChoice
         ) { choice in
-            Button(choice.confirmTitle, role: choice == .system ? nil : .destructive) {
+            Button(choice.confirmTitle.ui, role: choice == .system ? nil : .destructive) {
                 store.send(.deviceInfo(.reboot(choice.mode)))
             }
             Button("Cancel", role: .cancel) {}
         } message: { choice in
-            Text(choice.message)
+            Text(choice.message.ui)
         }
     }
 
@@ -89,7 +89,7 @@ struct DeviceInfoView: View {
                             .font(.caption.weight(.semibold))
                             .foregroundStyle(Theme.sky)
                             .textCase(.uppercase)
-                        Text(displayName)
+                        Text(displayName.ui)
                             .font(.system(.title, design: .rounded, weight: .bold))
                             .foregroundStyle(Theme.cream)
                         Text(details.deviceName.isEmpty ? " " : details.deviceName)
@@ -98,7 +98,7 @@ struct DeviceInfoView: View {
                     }
                     Spacer()
                     VStack(alignment: .trailing, spacing: 6) {
-                        Label(batteryText, systemImage: batterySymbol)
+                        Label(batteryText.ui, systemImage: batterySymbol)
                             .font(.subheadline.weight(.semibold))
                             .foregroundStyle(Theme.accent)
                         if store.deviceInfo.isLoading || store.deviceInfo.isRebooting {
@@ -154,7 +154,7 @@ struct DeviceInfoView: View {
 
     private func metric(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(title.ui)
                 .font(.caption2.weight(.semibold))
                 .foregroundStyle(Theme.tertiary)
             Text(value)
@@ -169,7 +169,7 @@ struct DeviceInfoView: View {
 
     private func infoRow(_ title: String, _ value: String) -> some View {
         VStack(alignment: .leading, spacing: 4) {
-            Text(title)
+            Text(title.ui)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.tertiary)
             Text(value.isEmpty ? "—" : value)

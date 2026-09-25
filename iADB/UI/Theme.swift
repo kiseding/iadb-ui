@@ -64,10 +64,10 @@ struct LabEmpty: View {
                 .frame(width: 76, height: 76)
                 .background(Theme.raised, in: Circle())
                 .overlay { Circle().strokeBorder(Theme.line, lineWidth: 1) }
-            Text(title)
+            Text(title.ui)
                 .font(.title3.weight(.semibold))
                 .foregroundStyle(Theme.cream)
-            Text(message)
+            Text(message.ui)
                 .font(.subheadline)
                 .foregroundStyle(Theme.secondary)
                 .multilineTextAlignment(.center)
@@ -87,7 +87,7 @@ struct ErrorBanner: View {
                 Image(systemName: "exclamationmark.triangle.fill")
                     .foregroundStyle(Theme.warning)
                     .padding(.top, 1)
-                Text(message)
+                Text(message.ui)
                     .font(.footnote)
                     .foregroundStyle(Theme.cream)
                     .frame(maxWidth: .infinity, alignment: .leading)
@@ -124,7 +124,7 @@ struct PillButton: View {
                 } else if let systemImage {
                     Image(systemName: systemImage)
                 }
-                Text(title)
+                Text(title.ui)
             }
             .font(.subheadline.weight(.semibold))
             .foregroundStyle(foreground)
@@ -166,10 +166,10 @@ struct ConnectionStrip: View {
                 .frame(width: 9, height: 9)
                 .shadow(color: color.opacity(0.7), radius: state == .connected ? 6 : 0)
             VStack(alignment: .leading, spacing: 2) {
-                Text(title)
+                Text(title.ui)
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.cream)
-                Text(subtitle)
+                Text(subtitle.ui)
                     .font(.caption)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)
@@ -219,6 +219,12 @@ struct ConnectionStrip: View {
             return message
         }
     }
+}
+
+extension String {
+    /// Looks the English UI copy up in Localizable.strings.
+    /// Device names, paths, and shell output stay as written when they are not keys.
+    var ui: LocalizedStringKey { LocalizedStringKey(self) }
 }
 
 extension View {

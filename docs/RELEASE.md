@@ -3,10 +3,11 @@
 GitHub Actions are split by purpose:
 
 - `Pull Request Checks` builds the app and runs unit/UI tests for pull requests.
-- `Unsigned IPA` builds an unsigned IPA on every push, on every branch, and on manual runs.
+- `Unsigned IPA` is the only IPA build. It runs on every branch push, on `vMAJOR.MINOR.PATCH`
+  tags, and on manual runs. A version tag also publishes that IPA as the GitHub release.
 - `TestFlight` is a manual signed build and upload to App Store Connect.
-- `Release` runs for `vMAJOR.MINOR.PATCH` tags, builds the unsigned IPA, uploads the same
-  version/build to TestFlight, and publishes the unsigned IPA in a GitHub release.
+- `Release` runs for `vMAJOR.MINOR.PATCH` tags and only uploads that version to TestFlight.
+  It does not build another IPA.
 
 The GitHub run ID plus retry attempt is used as `CURRENT_PROJECT_VERSION`. It is shared
 by all jobs in a release, increases on a retry, and avoids collisions between the
@@ -50,8 +51,9 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The GitHub release is created after the unsigned IPA build succeeds. TestFlight upload
-runs in parallel and does not block the release; it still needs the Apple secrets below.
+Pushing the tag starts `Unsigned IPA`, which publishes the GitHub release, and `Release`,
+which uploads to TestFlight. TestFlight still needs the Apple secrets below and does not
+block the IPA or the GitHub release.
 
 Before tagging, complete App Store Connect metadata, privacy labels, export-compliance
 documentation, screenshots, support and privacy-policy URLs, and reviewer instructions.

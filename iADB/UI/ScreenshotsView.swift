@@ -132,12 +132,12 @@ private struct ScreenshotDetail: View {
                 .padding(.horizontal, 16)
             }
             .background(LabBackground().ignoresSafeArea())
-            .navigationTitle(entry.deviceName ?? "Screenshot")
+            .navigationTitle(Text((entry.deviceName ?? "Screenshot").ui))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Close") { dismiss() } }
                 ToolbarItem(placement: .primaryAction) {
-                    ShareLink(item: PNGPayload(data: entry.data), preview: SharePreview(entry.deviceName ?? "Screenshot")) {
+                    ShareLink(item: PNGPayload(data: entry.data), preview: SharePreview(Text((entry.deviceName ?? "Screenshot").ui))) {
                         Image(systemName: "square.and.arrow.up")
                     }
                 }

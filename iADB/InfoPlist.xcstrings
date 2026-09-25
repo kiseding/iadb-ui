@@ -39,6 +39,12 @@
             "state" : "translated",
             "value" : "iADB требуется доступ к локальной сети, чтобы искать, сопрягать и подключать устройства Android через Wireless debugging."
           }
+        },
+        "zh-Hans" : {
+          "stringUnit" : {
+            "state" : "translated",
+            "value" : "iADB 需要本地网络权限，以便发现 Android 设备、完成无线调试配对并建立连接。"
+          }
         }
       }
     }

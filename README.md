@@ -35,6 +35,6 @@ BUILD_NUMBER=1 scripts/build-unsigned-ipa.sh
 
 ## Continuous integration
 
-Every push runs [Unsigned IPA](.github/workflows/unsigned.yml). The run uploads `iADB-<version>-<build>-unsigned.ipa` as an artifact for that commit. Pull requests still run unit tests and a generic iOS build. Signed TestFlight uploads stay on the manual `TestFlight` workflow and on `vMAJOR.MINOR.PATCH` tags.
+Every branch push and version tag runs [Unsigned IPA](.github/workflows/unsigned.yml), the only workflow that builds an IPA. The run uploads `iADB-<version>-<build>-unsigned.ipa`. A `vMAJOR.MINOR.PATCH` tag also attaches that IPA to the GitHub release. Pull requests still run unit tests and a generic iOS build. Signed TestFlight uploads stay on the manual `TestFlight` workflow and on version tags, and do not build a second IPA.
 
 The IPA is unsigned. GitHub Actions does not have an Apple distribution certificate unless the TestFlight secrets in [docs/RELEASE.md](docs/RELEASE.md) are configured.

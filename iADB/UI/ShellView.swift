@@ -30,7 +30,7 @@ struct ShellView: View {
                         .foregroundStyle(Theme.tertiary)
                     Spacer()
                     if let code = store.shell.exitCode {
-                        Text("exit \(code)")
+                        Text("exit \(Int(code))")
                             .font(.caption.weight(.bold).monospacedDigit())
                             .foregroundStyle(code == 0 ? Theme.accent : Theme.danger)
                     } else if store.shell.isExecuting {

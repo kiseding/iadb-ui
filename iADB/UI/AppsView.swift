@@ -59,12 +59,12 @@ struct AppsView: View {
             importPackage(result)
         }
         .confirmationDialog(
-            pending?.title ?? "Confirm",
+            Text((pending?.title ?? "Confirm").ui),
             isPresented: Binding(get: { pending != nil }, set: { if !$0 { pending = nil } }),
             titleVisibility: .visible,
             presenting: pending
         ) { action in
-            Button(action.confirm, role: .destructive) {
+            Button(action.confirm.ui, role: .destructive) {
                 switch action.kind {
                 case .uninstall: store.send(.apps(.uninstall(action.package)))
                 case .clear: store.send(.apps(.clearData(action.package)))

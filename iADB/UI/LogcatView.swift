@@ -120,7 +120,7 @@ struct LogcatView: View {
                 .background(levelColor(entry.level), in: RoundedRectangle(cornerRadius: 4, style: .continuous))
             VStack(alignment: .leading, spacing: 2) {
                 HStack(spacing: 6) {
-                    Text(entry.tag.isEmpty ? "log" : entry.tag)
+                    Text(entry.tag.isEmpty ? String(localized: "log") : entry.tag)
                         .font(.caption.weight(.semibold))
                         .foregroundStyle(Theme.sky)
                         .lineLimit(1)

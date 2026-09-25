@@ -12,7 +12,7 @@ enum WorkspaceSection: String, CaseIterable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .devices: "Devices"
         case .overview: "Device"
@@ -42,7 +42,7 @@ private enum PhoneTab: String, CaseIterable, Hashable, Identifiable {
 
     var id: String { rawValue }
 
-    var title: String {
+    var title: LocalizedStringKey {
         switch self {
         case .devices: "Devices"
         case .apps: "Apps"
@@ -145,10 +145,11 @@ struct RootView: View {
     }
 
     private var compactLayout: some View {
-        NavigationStack {
-            phoneScreen
-        }
-        .safeAreaInset(edge: .bottom, spacing: 0) {
+        VStack(spacing: 0) {
+            NavigationStack {
+                phoneScreen
+            }
+            .frame(maxWidth: .infinity, maxHeight: .infinity)
             phoneBar
         }
         .background(LabBackground().ignoresSafeArea())
@@ -194,7 +195,10 @@ struct RootView: View {
                 .buttonStyle(.plain)
             }
         }
-        .background(Theme.panel.opacity(0.96))
+        .background {
+            Theme.panel
+                .ignoresSafeArea(edges: .bottom)
+        }
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.line).frame(height: 1)
         }
@@ -254,8 +258,8 @@ private struct MoreMenuView: View {
     }
 
     private func menuLink<Destination: View>(
-        title: String,
-        message: String,
+        title: LocalizedStringKey,
+        message: LocalizedStringKey,
         symbol: String,
         @ViewBuilder destination: () -> Destination
     ) -> some View {

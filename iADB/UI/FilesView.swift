@@ -108,7 +108,7 @@ struct FilesView: View {
             .presentationDetents([.medium])
         }
         .confirmationDialog(
-            "Delete \(pendingDelete?.name ?? "this item")?",
+            Text("Delete \(pendingDelete?.name ?? String(localized: "this item"))?"),
             isPresented: Binding(get: { pendingDelete != nil }, set: { if !$0 { pendingDelete = nil } }),
             titleVisibility: .visible,
             presenting: pendingDelete
@@ -345,7 +345,7 @@ private struct NamePrompt: View {
     var body: some View {
         NavigationStack {
             VStack {
-                TextField(title, text: $value)
+                TextField(title.ui, text: $value)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
                     .font(.body.monospaced())
@@ -356,12 +356,12 @@ private struct NamePrompt: View {
             }
             .padding(16)
             .background(LabBackground().ignoresSafeArea())
-            .navigationTitle(title)
+            .navigationTitle(Text(title.ui))
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(confirm) {
+                    Button(confirm.ui) {
                         onConfirm(value)
                         dismiss()
                     }

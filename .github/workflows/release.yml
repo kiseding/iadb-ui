@@ -1,5 +1,7 @@
 name: Release
 
+# Signed TestFlight upload only. The unsigned IPA is built by Unsigned IPA,
+# including when this tag is pushed.
 on:
   push:
     tags: ['v*']
@@ -9,7 +11,7 @@ concurrency:
   cancel-in-progress: false
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
   prepare:
@@ -28,13 +30,6 @@ jobs:
           fi
           echo "marketing_version=${BASH_REMATCH[1]}" >> "$GITHUB_OUTPUT"
 
-  unsigned:
-    needs: prepare
-    uses: ./.github/workflows/reusable-unsigned.yml
-    with:
-      marketing_version: ${{ needs.prepare.outputs.marketing_version }}
-      build_number: ${{ format('{0}.{1}', github.run_id, github.run_attempt) }}
-
   testflight:
     needs: prepare
     uses: ./.github/workflows/reusable-testflight.yml
@@ -47,22 +42,3 @@ jobs:
       APP_STORE_CONNECT_ISSUER_ID: ${{ secrets.APP_STORE_CONNECT_ISSUER_ID }}
       APP_STORE_CONNECT_API_PRIVATE_KEY: ${{ secrets.APP_STORE_CONNECT_API_PRIVATE_KEY }}
       SIGNING_REPO_SSH_KEY: ${{ secrets.SIGNING_REPO_SSH_KEY }}
-
-  github-release:
-    needs: [prepare, unsigned]
-    if: ${{ always() && needs.prepare.result == 'success' && needs.unsigned.result == 'success' }}
-    runs-on: ubuntu-latest
-    steps:
-      - name: Download unsigned IPA
-        uses: actions/download-artifact@v4
-        with:
-          pattern: iADB-unsigned-*
-          path: release-assets
-          merge-multiple: true
-
-      - name: Create GitHub release
-        uses: softprops/action-gh-release@v2
-        with:
-          name: iADB ${{ needs.prepare.outputs.marketing_version }}
-          files: release-assets/*.ipa
-          generate_release_notes: true

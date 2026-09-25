@@ -90,7 +90,7 @@ struct DevicesView: View {
                     if store.connection.isScanning {
                         ProgressView().controlSize(.small).tint(Theme.sky)
                     }
-                    Button(store.connection.discoveryPaused ? "Scan" : "Pause") {
+                    Button(LocalizedStringKey(store.connection.discoveryPaused ? "Scan" : "Pause")) {
                         if store.connection.discoveryPaused {
                             store.send(.connection(.startDiscovery))
                         } else {
@@ -100,7 +100,7 @@ struct DevicesView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.sky)
                 }
-                Text(store.connection.discoveryPaused ? "Discovery is paused." : "Watching the local network for wireless debugging.")
+                Text(LocalizedStringKey(store.connection.discoveryPaused ? "Discovery is paused." : "Watching the local network for wireless debugging."))
                     .font(.footnote)
                     .foregroundStyle(Theme.secondary)
                 if store.connection.discoveredDevices.isEmpty {
@@ -182,7 +182,7 @@ struct DevicesView: View {
                     Text(device.displayName)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(Theme.cream)
-                    Text(savedSubtitle(device))
+                    Text(savedSubtitle(device).ui)
                         .font(.caption.monospacedDigit())
                         .foregroundStyle(Theme.secondary)
                 }
@@ -212,10 +212,10 @@ struct DevicesView: View {
 
     private func field(_ title: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(title.ui)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.tertiary)
-            TextField(title, text: text)
+            TextField(title.ui, text: text)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(keyboard)
@@ -227,13 +227,13 @@ struct DevicesView: View {
     }
 
     private func sectionTitle(_ title: String, symbol: String) -> some View {
-        Label(title, systemImage: symbol)
+        Label(title.ui, systemImage: symbol)
             .font(.headline)
             .foregroundStyle(Theme.cream)
     }
 
     private func statusPill(_ title: String, tint: Color) -> some View {
-        Text(title)
+        Text(title.ui)
             .font(.caption2.weight(.bold))
             .foregroundStyle(tint)
             .padding(.horizontal, 8)
@@ -358,10 +358,10 @@ private struct PairingSheet: View {
 
     private func labeledField(_ title: String, text: Binding<String>, keyboard: UIKeyboardType) -> some View {
         VStack(alignment: .leading, spacing: 6) {
-            Text(title)
+            Text(title.ui)
                 .font(.caption.weight(.semibold))
                 .foregroundStyle(Theme.tertiary)
-            TextField(title, text: text)
+            TextField(title.ui, text: text)
                 .textInputAutocapitalization(.never)
                 .autocorrectionDisabled()
                 .keyboardType(keyboard)
