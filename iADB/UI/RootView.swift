@@ -153,7 +153,6 @@ struct RootView: View {
             phoneBar
         }
         .background(Theme.ink.ignoresSafeArea())
-        .ignoresSafeArea(edges: .bottom)
         .sensoryFeedback(.selection, trigger: phoneTab)
     }
 
@@ -179,24 +178,25 @@ struct RootView: View {
                 Button {
                     phoneTab = tab
                 } label: {
-                    VStack(spacing: 2) {
+                    VStack(spacing: 3) {
                         Image(systemName: tab.symbol)
-                            .font(.system(size: 16, weight: .semibold))
+                            .font(.system(size: 24, weight: .semibold))
                         Text(tab.title)
-                            .font(.system(size: 10, weight: .medium))
+                            .font(.system(size: 12, weight: .medium))
                             .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(phoneTab == tab ? Theme.accent : Theme.tertiary)
-                    .padding(.top, 5)
-                    .padding(.bottom, 12)
+                    .padding(.top, 6)
+                    .padding(.bottom, 6)
                 }
                 .buttonStyle(.plain)
             }
         }
+        .padding(.horizontal, 12)
         .background {
             Theme.panel
-                .ignoresSafeArea(edges: .bottom)
+                .ignoresSafeArea(edges: [.bottom, .horizontal])
         }
         .overlay(alignment: .top) {
             Rectangle().fill(Theme.line).frame(height: 1)
@@ -321,4 +321,17 @@ extension View {
     func connectionToolbar(_ store: StoreOf<AppFeature>) -> some View {
         modifier(ConnectionToolbar(store: store))
     }
+}
+
+#Preview("Phone") {
+    RootView(store: Store(initialState: AppFeature.State()) {
+        AppFeature()
+    })
+}
+
+#Preview("Phone · 中文") {
+    RootView(store: Store(initialState: AppFeature.State()) {
+        AppFeature()
+    })
+    .environment(\.locale, Locale(identifier: "zh-Hans"))
 }

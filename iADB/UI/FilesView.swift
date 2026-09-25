@@ -414,3 +414,11 @@ private struct NamePrompt: View {
         .presentationDetents([.height(220)])
     }
 }
+
+#Preview("Files") {
+    NavigationStack {
+        FilesView(store: Store(initialState: AppFeature.State()) {
+            AppFeature()
+        })
+    }
+}
