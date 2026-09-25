@@ -153,6 +153,7 @@ struct RootView: View {
             phoneBar
         }
         .background(Theme.ink.ignoresSafeArea())
+        .ignoresSafeArea(edges: .bottom)
         .sensoryFeedback(.selection, trigger: phoneTab)
     }
 
@@ -188,7 +189,7 @@ struct RootView: View {
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(phoneTab == tab ? Theme.accent : Theme.tertiary)
                     .padding(.top, 6)
-                    .padding(.bottom, 6)
+                    .padding(.bottom, 20)
                 }
                 .buttonStyle(.plain)
             }
