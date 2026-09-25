@@ -50,8 +50,8 @@ git tag v1.0.0
 git push origin v1.0.0
 ```
 
-The GitHub release is created only after both the unsigned build and TestFlight upload
-succeed.
+The GitHub release is created after the unsigned IPA build succeeds. TestFlight upload
+runs in parallel and does not block the release; it still needs the Apple secrets below.
 
 Before tagging, complete App Store Connect metadata, privacy labels, export-compliance
 documentation, screenshots, support and privacy-policy URLs, and reviewer instructions.
