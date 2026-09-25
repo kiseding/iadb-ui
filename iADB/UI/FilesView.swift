@@ -44,6 +44,7 @@ struct FilesView: View {
                         .buttonStyle(.plain)
                         .listRowBackground(Theme.panel)
                         .listRowSeparatorTint(Theme.line)
+                        .listRowInsets(EdgeInsets(top: 8, leading: 14, bottom: 8, trailing: 14))
                         .swipeActions(edge: .trailing) {
                             Button("Delete", role: .destructive) { pendingDelete = entry }
                                 .disabled(!isConnected)
@@ -52,7 +53,11 @@ struct FilesView: View {
                                 .disabled(!isConnected)
                         }
                         .swipeActions(edge: .leading) {
-                            if !entry.isDirectory {
+                            if entry.isAPK {
+                                Button("Install") { store.send(.apps(.installRemote(entry.fullPath))) }
+                                    .tint(Theme.accent)
+                                    .disabled(!isConnected || store.apps.isInstalling)
+                            } else if !entry.isDirectory {
                                 Button("Save") { download(entry) }
                                     .tint(Theme.accent)
                                     .disabled(!isConnected || store.files.isWorking)
@@ -130,55 +135,64 @@ struct FilesView: View {
     private var isConnected: Bool { store.connection.connectionState == .connected }
 
     private var header: some View {
-        VStack(alignment: .leading, spacing: 10) {
+        VStack(alignment: .leading, spacing: 8) {
             ErrorBanner(message: localError ?? store.files.errorMessage)
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
-                    pathButton("/", path: "/")
-                    ForEach(breadcrumbs, id: \.path) { crumb in
-                        Image(systemName: "chevron.right")
-                            .font(.caption2)
-                            .foregroundStyle(Theme.tertiary)
-                        pathButton(crumb.name, path: crumb.path)
+            HStack(spacing: 8) {
+                Button {
+                    store.send(.files(.up))
+                } label: {
+                    Image(systemName: "chevron.left")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                }
+                .buttonStyle(.plain)
+                .foregroundStyle(store.files.currentPath == "/" ? Theme.tertiary : Theme.cream)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+                .disabled(!isConnected || store.files.currentPath == "/")
+
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(spacing: 4) {
+                        pathButton("/", path: "/")
+                        ForEach(breadcrumbs, id: \.path) { crumb in
+                            Image(systemName: "chevron.right")
+                                .font(.caption2.weight(.bold))
+                                .foregroundStyle(Theme.tertiary)
+                            pathButton(crumb.name, path: crumb.path)
+                        }
                     }
                 }
-            }
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 8) {
+
+                Menu {
                     ForEach(shortcuts, id: \.self) { path in
                         Button(path) { store.send(.files(.load(path))) }
-                            .font(.caption.monospaced())
-                            .foregroundStyle(Theme.sky)
-                            .padding(.horizontal, 10)
-                            .padding(.vertical, 6)
-                            .background(Theme.panel, in: Capsule())
-                            .disabled(!isConnected)
                     }
+                } label: {
+                    Image(systemName: "bookmark")
+                        .font(.body.weight(.semibold))
+                        .frame(width: 32, height: 32)
+                        .foregroundStyle(Theme.cream)
+                        .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
                 }
+                .disabled(!isConnected)
             }
+
             HStack(spacing: 8) {
-                Image(systemName: "magnifyingglass").foregroundStyle(Theme.tertiary)
-                TextField("Filter names", text: $query)
-                    .textInputAutocapitalization(.never)
-                    .autocorrectionDisabled()
-                    .foregroundStyle(Theme.cream)
+                HStack(spacing: 6) {
+                    Image(systemName: "magnifyingglass").foregroundStyle(Theme.tertiary)
+                    TextField("Filter names", text: $query)
+                        .textInputAutocapitalization(.never)
+                        .autocorrectionDisabled()
+                        .foregroundStyle(Theme.cream)
+                }
+                .padding(.horizontal, 10)
+                .frame(height: 32)
+                .background(Theme.panel, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+
+                fileAction("folder.badge.plus", disabled: !isConnected || store.files.isWorking) { showNewFolder = true }
+                fileAction("doc.badge.plus", disabled: !isConnected || store.files.isWorking) { showNewFile = true }
+                fileAction("square.and.arrow.up", disabled: !isConnected || store.files.isWorking) { showImporter = true }
             }
-            .padding(12)
-            .background(Theme.panel, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
-            HStack(spacing: 8) {
-                PillButton(title: "Up", systemImage: "arrow.up", role: .secondary, disabled: !isConnected || store.files.currentPath == "/") {
-                    store.send(.files(.up))
-                }
-                PillButton(title: "Folder", systemImage: "folder.badge.plus", role: .secondary, disabled: !isConnected || store.files.isWorking) {
-                    showNewFolder = true
-                }
-                PillButton(title: "File", systemImage: "doc.badge.plus", role: .secondary, disabled: !isConnected || store.files.isWorking) {
-                    showNewFile = true
-                }
-                PillButton(title: "Upload", systemImage: "square.and.arrow.up", disabled: !isConnected || store.files.isWorking, expands: true) {
-                    showImporter = true
-                }
-            }
+
             if store.files.isLoading || store.files.isWorking {
                 ProgressView(store.files.isLoading ? "Reading directory" : "Working")
                     .controlSize(.small)
@@ -187,8 +201,20 @@ struct FilesView: View {
             }
         }
         .padding(.horizontal, 16)
-        .padding(.top, 12)
+        .padding(.top, 8)
         .padding(.bottom, 8)
+    }
+
+    private func fileAction(_ symbol: String, disabled: Bool, action: @escaping () -> Void) -> some View {
+        Button(action: action) {
+            Image(systemName: symbol)
+                .font(.body.weight(.semibold))
+                .frame(width: 32, height: 32)
+                .foregroundStyle(disabled ? Theme.tertiary : Theme.accentInk)
+                .background(disabled ? Theme.panel : Theme.accent, in: RoundedRectangle(cornerRadius: 8, style: .continuous))
+        }
+        .buttonStyle(.plain)
+        .disabled(disabled)
     }
 
     private var breadcrumbs: [(name: String, path: String)] {
@@ -208,45 +234,60 @@ struct FilesView: View {
 
     private func pathButton(_ title: String, path: String) -> some View {
         Button(title) { store.send(.files(.load(path))) }
-            .font(.caption.weight(.semibold).monospaced())
-            .foregroundStyle(path == store.files.currentPath ? Theme.accentInk : Theme.cream)
-            .padding(.horizontal, 8)
-            .padding(.vertical, 5)
-            .background(path == store.files.currentPath ? Theme.accent : Theme.raised, in: Capsule())
+            .font(.subheadline.weight(path == store.files.currentPath ? .semibold : .regular))
+            .foregroundStyle(path == store.files.currentPath ? Theme.cream : Theme.secondary)
+            .lineLimit(1)
             .disabled(!isConnected)
     }
 
     private func fileRow(_ entry: FileEntry) -> some View {
         HStack(spacing: 12) {
-            Image(systemName: entry.isSymlink ? "link" : (entry.isDirectory ? "folder.fill" : "doc.fill"))
-                .foregroundStyle(entry.isDirectory ? Theme.sky : Theme.accent)
-                .frame(width: 28)
-            VStack(alignment: .leading, spacing: 3) {
+            Image(systemName: entry.isSymlink ? "link" : (entry.isDirectory ? "folder.fill" : "doc"))
+                .font(.body)
+                .foregroundStyle(entry.isDirectory ? Theme.sky : Theme.secondary)
+                .frame(width: 28, height: 28)
+                .background(Theme.raised, in: RoundedRectangle(cornerRadius: 7, style: .continuous))
+            VStack(alignment: .leading, spacing: 2) {
                 Text(entry.name)
-                    .font(.subheadline.weight(.semibold))
+                    .font(.body)
                     .foregroundStyle(Theme.cream)
                     .lineLimit(1)
                 Text(meta(entry))
-                    .font(.caption2.monospaced())
+                    .font(.caption)
                     .foregroundStyle(Theme.secondary)
                     .lineLimit(1)
             }
             Spacer(minLength: 0)
-            if entry.isNavigableDirectory {
+            if entry.isAPK {
+                Button {
+                    store.send(.apps(.installRemote(entry.fullPath)))
+                } label: {
+                    if store.apps.isInstalling {
+                        ProgressView().controlSize(.small)
+                    } else {
+                        Text("Install")
+                            .font(.caption.weight(.semibold))
+                    }
+                }
+                .buttonStyle(.borderedProminent)
+                .tint(Theme.accent)
+                .disabled(!isConnected || store.apps.isInstalling)
+            } else if entry.isNavigableDirectory {
                 Image(systemName: "chevron.right")
-                    .font(.caption.weight(.bold))
+                    .font(.caption.weight(.semibold))
                     .foregroundStyle(Theme.tertiary)
             }
         }
-        .padding(.vertical, 4)
     }
 
     private func meta(_ entry: FileEntry) -> String {
-        var pieces = [entry.permissions, entry.size, entry.date, entry.time].filter { !$0.isEmpty }
         if let target = entry.symlinkTarget, !target.isEmpty {
-            pieces.append("→ \(target)")
+            return "→ \(target)"
         }
-        return pieces.joined(separator: "  ")
+        if entry.isDirectory {
+            return entry.date
+        }
+        return [entry.size, entry.date].filter { !$0.isEmpty }.joined(separator: " · ")
     }
 
     private var newFileSheet: some View {

@@ -20,4 +20,8 @@ struct FileEntry: Identifiable, Hashable {
     /// available through its context actions if directory loading fails.
     var isNavigableDirectory: Bool { isDirectory || isSymlink }
 
+    var isAPK: Bool {
+        !isDirectory && name.lowercased().hasSuffix(".apk")
+    }
+
 }

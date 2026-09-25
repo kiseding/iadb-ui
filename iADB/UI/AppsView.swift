@@ -55,7 +55,7 @@ struct AppsView: View {
             guard isConnected else { return }
             store.send(.apps(.load))
         }
-        .fileImporter(isPresented: $importAPK, allowedContentTypes: [.data, .item]) { result in
+        .fileImporter(isPresented: $importAPK, allowedContentTypes: apkTypes) { result in
             importPackage(result)
         }
         .confirmationDialog(
@@ -138,6 +138,14 @@ struct AppsView: View {
                 .background(Theme.raised, in: Capsule())
         }
         .buttonStyle(.plain)
+    }
+
+    private var apkTypes: [UTType] {
+        var types: [UTType] = [.item, .data, .archive, .zip]
+        if let apk = UTType(filenameExtension: "apk") {
+            types.insert(apk, at: 0)
+        }
+        return types
     }
 
     private func importPackage(_ result: Result<URL, Error>) {

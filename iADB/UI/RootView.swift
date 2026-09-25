@@ -152,7 +152,8 @@ struct RootView: View {
             .frame(maxWidth: .infinity, maxHeight: .infinity)
             phoneBar
         }
-        .background(LabBackground().ignoresSafeArea())
+        .background(Theme.ink.ignoresSafeArea())
+        .ignoresSafeArea(edges: .bottom)
         .sensoryFeedback(.selection, trigger: phoneTab)
     }
 
@@ -178,19 +179,17 @@ struct RootView: View {
                 Button {
                     phoneTab = tab
                 } label: {
-                    VStack(spacing: 4) {
+                    VStack(spacing: 2) {
                         Image(systemName: tab.symbol)
-                            .font(.system(size: 17, weight: .semibold))
+                            .font(.system(size: 16, weight: .semibold))
                         Text(tab.title)
-                            .font(.caption2.weight(.medium))
-                        Circle()
-                            .fill(Theme.accent)
-                            .frame(width: 4, height: 4)
-                            .opacity(phoneTab == tab ? 1 : 0)
+                            .font(.system(size: 10, weight: .medium))
+                            .lineLimit(1)
                     }
                     .frame(maxWidth: .infinity)
                     .foregroundStyle(phoneTab == tab ? Theme.accent : Theme.tertiary)
-                    .padding(.vertical, 8)
+                    .padding(.top, 5)
+                    .padding(.bottom, 12)
                 }
                 .buttonStyle(.plain)
             }

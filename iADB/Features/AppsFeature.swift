@@ -23,6 +23,7 @@ struct AppsFeature {
         case launch(String)
         case mutationFinished(package: String, removesPackage: Bool, Result<Void, Error>)
         case install(URL)
+        case installRemote(String)
         case installFinished(Result<Void, Error>)
         case cancel
     }
@@ -105,6 +106,24 @@ struct AppsFeature {
                         await send(.installFinished(.success(())))
                     } catch {
                         _ = try? await adbClient.shell("rm -f \(adbShellQuote(remotePath))")
+                        await send(.installFinished(.failure(error)))
+                    }
+                }
+                .cancellable(id: CancelID.request, cancelInFlight: true)
+
+            case .installRemote(let path):
+                guard state.isConnected, !state.isInstalling else { return .none }
+                guard path.hasPrefix("/") else {
+                    state.errorMessage = "Destination must be absolute"
+                    return .none
+                }
+                state.isInstalling = true
+                state.errorMessage = nil
+                return .run { send in
+                    do {
+                        _ = try await adbClient.shell("pm install -r \(adbShellQuote(path))")
+                        await send(.installFinished(.success(())))
+                    } catch {
                         await send(.installFinished(.failure(error)))
                     }
                 }

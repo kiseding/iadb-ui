@@ -18,20 +18,7 @@ enum Theme {
 
 struct LabBackground: View {
     var body: some View {
-        ZStack {
-            Theme.ink
-            LinearGradient(
-                colors: [Theme.sky.opacity(0.18), .clear, Theme.accent.opacity(0.08)],
-                startPoint: .topLeading,
-                endPoint: .bottomTrailing
-            )
-            RadialGradient(
-                colors: [Theme.accent.opacity(0.16), .clear],
-                center: .topTrailing,
-                startRadius: 12,
-                endRadius: 480
-            )
-        }
+        Theme.ink
     }
 }
 
@@ -230,8 +217,9 @@ extension String {
 extension View {
     func labScreen() -> some View {
         background(LabBackground().ignoresSafeArea())
+            .navigationBarTitleDisplayMode(.inline)
             .toolbarColorScheme(.dark, for: .navigationBar)
-            .toolbarBackground(Theme.ink.opacity(0.94), for: .navigationBar)
+            .toolbarBackground(Theme.ink, for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
     }
 

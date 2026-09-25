@@ -53,6 +53,7 @@
 "Filter packages" = "筛选包名";
 "System packages" = "系统应用";
 "Install APK" = "安装 APK";
+"Install" = "安装";
 "Uninstall this package?" = "卸载这个应用？";
 "Clear app data?" = "清除应用数据？";
 "Uninstall" = "卸载";
