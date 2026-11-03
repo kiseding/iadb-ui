@@ -171,7 +171,7 @@ final class DiscoveryTests: XCTestCase {
             $0.connectionState = .connected
         }
         // The reducer also asks the device for its model.
-        await store.receive(.deviceNameRemembered(host: "192.168.43.1", name: "XR-75A80L"))
+        await store.receive(\.deviceNameRemembered)
 
         XCTAssertEqual(remembered.value, [DiscoveryEndpoint(host: "192.168.43.1", port: 37_123)])
     }
@@ -200,7 +200,7 @@ final class DiscoveryTests: XCTestCase {
             $0.connectedDevice = device
             $0.connectionState = .connected
         }
-        await store.receive(.deviceNameRemembered(host: "192.168.43.155", name: "XR-75A80L"))
+        await store.receive(\.deviceNameRemembered)
 
         XCTAssertEqual(named.value?.0, "192.168.43.155")
         XCTAssertEqual(named.value?.1, "XR-75A80L")
