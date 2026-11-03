@@ -1,0 +1,44 @@
+name: Verify build
+
+# Compiles the app without packaging it. The Release archive takes about
+# seventeen minutes end to end and the runners currently drop a job at fifteen,
+# so this exists to answer one question quickly: does the source still compile?
+# Debug skips optimisation, which is most of the package cost.
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  compile:
+    runs-on: macos-26
+    timeout-minutes: 45
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Xcode project
+        uses: ./.github/actions/setup-xcode
+
+      - name: Compile for a generic device
+        run: |
+          set -o pipefail
+          mkdir -p build
+          xcodebuild build \
+            -project iADB.xcodeproj \
+            -scheme iADB \
+            -configuration Debug \
+            -destination 'generic/platform=iOS' \
+            -skipMacroValidation \
+            -skipPackagePluginValidation \
+            CODE_SIGNING_ALLOWED=NO \
+            2>&1 | tee build/compile.log
+
+      - name: Upload compiler log
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: compile-log
+          path: build/compile.log
+          retention-days: 7
