@@ -51,18 +51,9 @@ jobs:
             -skipPackagePluginValidation \
             2>&1 | tee build/test.log
 
-      - name: Generic device Release build
-        run: |
-          set -o pipefail
-          xcodebuild build \
-            -project iADB.xcodeproj \
-            -scheme iADB \
-            -configuration Release \
-            -destination 'generic/platform=iOS' \
-            -skipMacroValidation \
-            -skipPackagePluginValidation \
-            CODE_SIGNING_ALLOWED=NO \
-            2>&1 | tee build/release-build.log
+      # The Release build used to run here as well, which pushed the job past
+      # the point where the runner gives up. Unsigned IPA already archives in
+      # Release and reports its own result, so this job only runs the tests.
 
       - name: Upload diagnostics
         if: always()
