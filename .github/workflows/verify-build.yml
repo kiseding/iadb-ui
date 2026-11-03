@@ -5,8 +5,11 @@ name: Verify build
 # takes about seventeen minutes; this exists to answer two questions quickly:
 # does everything still compile, and do the tests pass?
 #
-# build-for-testing and test-without-building share one DerivedData, so the app
-# is compiled exactly once and the second step only boots a simulator.
+# Two runner images are requested at once because macOS capacity is allocated
+# unevenly: a job can sit queued with no runner for fifteen minutes and then be
+# cancelled without ever producing a step. Whichever image gets a runner first
+# finishes the check, and fail-fast is off so a queue timeout on one does not
+# take the other with it.
 on:
   workflow_dispatch:
 
@@ -15,14 +18,23 @@ permissions:
 
 jobs:
   compile:
-    runs-on: macos-26
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [macos-26, macos-15]
 
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up Xcode project
         uses: ./.github/actions/setup-xcode
+
+      - name: Report toolchain
+        run: |
+          xcodebuild -version
+          swift --version
 
       - name: Select simulator
         id: simulator
@@ -78,7 +90,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: verify-diagnostics
+          name: verify-diagnostics-${{ matrix.os }}
           path: |
             build/*.log
             build/TestResults.xcresult
