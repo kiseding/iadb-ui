@@ -84,14 +84,14 @@ enum NetworkRouteTable {
     private static func messages(_ mib: [Int32]) -> [RoutingMessage] {
         var mib = mib
         var size = 0
-        guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0, size > 0 else {
-            return []
-        }
+        guard sysctl(&mib, u_int(mib.count), nil, &size, nil, 0) == 0,
+              size > 0, size <= maximumTableSize
+        else { return [] }
 
         var buffer = [UInt8](repeating: 0, count: size)
-        guard sysctl(&mib, u_int(mib.count), &buffer, &size, nil, 0) == 0, size > 0 else {
-            return []
-        }
+        guard sysctl(&mib, u_int(mib.count), &buffer, &size, nil, 0) == 0,
+              size > 0, size <= buffer.count
+        else { return [] }
         return parse(Array(buffer.prefix(size)))
     }
 
@@ -254,6 +254,11 @@ enum NetworkRouteTable {
 
     /// `sizeof(struct sockaddr_in)` on BSD.
     private static let ipv4RecordSize = 16
+
+    /// A routing table is kilobytes even with a VPN and a handful of containers
+    /// attached. A larger number means the size probe came back wrong, and
+    /// allocating it would take the process down instead of returning nothing.
+    private static let maximumTableSize = 8 * 1024 * 1024
 
     private static let netControl: Int32 = 4        // CTL_NET
     private static let routeFamily: Int32 = 17      // PF_ROUTE
