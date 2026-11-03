@@ -31,6 +31,13 @@
 	<true/>
 	<key>NSLocalNetworkUsageDescription</key>
 	<string>iADB needs access to your local network to connect to Android devices via WiFi ADB.</string>
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<!-- The UPnP description document is served over plain HTTP by the
+		     device itself, on the LAN. No public host is ever reached. -->
+		<key>NSAllowsLocalNetworking</key>
+		<true/>
+	</dict>
 	<key>NSBonjourServices</key>
 	<array>
 		<string>_adb-tls-connect._tcp</string>

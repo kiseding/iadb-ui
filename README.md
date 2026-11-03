@@ -4,9 +4,10 @@ Native iOS app for Android wireless debugging. Discover a device on the local ne
 
 ## Features
 
-- Bonjour discovery, manual host/port connect, pairing codes, and saved devices
+- Bonjour discovery, SSDP discovery, a gateway probe, ARP-neighbour probing, a
+  direct subnet sweep, manual host/port connect, pairing codes, and saved devices
 - Device properties, battery, and reboot (system, recovery, bootloader)
-- Package list, launch, force-stop, clear data, uninstall, and APK install
+- Package list, launch, force-stop, clear data, uninstall, and APK install with live upload progress
 - Remote files: browse, upload, download, rename, move, mkdir, and create a text file
 - Streaming `shell,v2` with local command history
 - Streaming logcat with level and text filters

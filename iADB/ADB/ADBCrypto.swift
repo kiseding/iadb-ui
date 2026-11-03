@@ -150,6 +150,82 @@ final class ADBCrypto {
         return unsafeBitCast(item, to: SecKey.self)
     }
 
+    // MARK: - Portable Key Files
+
+    /// Public key exactly as `adb` writes it to `adbkey.pub`.
+    static func publicKeyText() throws -> String {
+        let data = try ADBCrypto().adbPublicKey()
+        let body: Data
+        if let terminator = data.firstIndex(of: 0) {
+            body = data[..<terminator]
+        } else {
+            body = data
+        }
+        guard let text = String(data: body, encoding: .utf8) else {
+            throw ADBError.cryptoError("Failed to encode the ADB public key")
+        }
+        return text
+    }
+
+    /// PKCS#8 PEM of the current private key, the format `~/.android/adbkey`
+    /// uses, so it can be moved between this app and a desktop workstation.
+    static func exportPrivateKeyPEM() throws -> String {
+        let key: SecKey
+        if let stored = loadPrivateKey() {
+            key = stored
+        } else {
+            key = try ADBCrypto().privateKey
+        }
+        var error: Unmanaged<CFError>?
+        guard let pkcs1 = SecKeyCopyExternalRepresentation(key, &error) as Data? else {
+            throw ADBError.cryptoError(
+                "Failed to read the private key: \(error?.takeRetainedValue().localizedDescription ?? "unknown")"
+            )
+        }
+        return ADBKeyPEM.encode(ADBKeyPEM.wrapPKCS8(pkcs1))
+    }
+
+    /// Replaces the stored identity with a key read from a PEM file.
+    ///
+    /// The certificate goes with it: it was signed by the previous key, and an
+    /// STLS handshake that presents it alongside the new key would fail.
+    static func importPrivateKeyPEM(_ text: String) throws {
+        guard let pem = ADBKeyPEM.decode(text) else {
+            throw ADBError.cryptoError("That file does not contain a PEM private key")
+        }
+        guard let pkcs1 = ADBKeyPEM.pkcs1(fromPEMBody: pem.der, label: pem.label) else {
+            throw ADBError.cryptoError("Unsupported private key format: \(pem.label)")
+        }
+
+        let attributes: [String: Any] = [
+            kSecAttrKeyType as String: kSecAttrKeyTypeRSA,
+            kSecAttrKeyClass as String: kSecAttrKeyClassPrivate,
+            kSecAttrKeySizeInBits as String: keySizeInBits,
+        ]
+        var error: Unmanaged<CFError>?
+        guard let key = SecKeyCreateWithData(pkcs1 as CFData, attributes as CFDictionary, &error) else {
+            throw ADBError.cryptoError(
+                "Could not read the RSA key: \(error?.takeRetainedValue().localizedDescription ?? "unknown")"
+            )
+        }
+        guard SecKeyGetBlockSize(key) * 8 == keySizeInBits else {
+            throw ADBError.cryptoError("ADB requires a \(keySizeInBits)-bit RSA key")
+        }
+
+        // The old item has to go before the new one can take the same tag.
+        deleteKeys()
+        let add: [String: Any] = [
+            kSecClass as String: kSecClassKey,
+            kSecValueRef as String: key,
+            kSecAttrApplicationTag as String: Data(keyTag.utf8),
+        ]
+        let status = SecItemAdd(add as CFDictionary, nil)
+        guard status == errSecSuccess else {
+            throw ADBError.cryptoError("Failed to store the imported key (status: \(status))")
+        }
+        _ = deleteCertificate()
+    }
+
     // MARK: - ADB Auth Operations
 
     /// Sign an ADB auth token with our private key (SHA1 + PKCS1 v1.5)

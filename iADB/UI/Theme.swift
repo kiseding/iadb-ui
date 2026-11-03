@@ -233,13 +233,14 @@ enum ImportStaging {
     static func copySecurityScopedFile(_ url: URL) throws -> URL {
         let accessing = url.startAccessingSecurityScopedResource()
         defer { if accessing { url.stopAccessingSecurityScopedResource() } }
-        let folder = FileManager.default.temporaryDirectory.appendingPathComponent("iadb-import", isDirectory: true)
+        let root = FileManager.default.temporaryDirectory
+            .appendingPathComponent("iadb-import", isDirectory: true)
+        // One folder per import, so the staged file keeps its original name.
+        // The install banner reads that name straight from the URL.
+        let folder = root.appendingPathComponent(UUID().uuidString, isDirectory: true)
         try FileManager.default.createDirectory(at: folder, withIntermediateDirectories: true)
         let leaf = url.lastPathComponent.isEmpty ? "import.bin" : url.lastPathComponent
-        let destination = folder.appendingPathComponent("\(UUID().uuidString)-\(leaf)")
-        if FileManager.default.fileExists(atPath: destination.path) {
-            try FileManager.default.removeItem(at: destination)
-        }
+        let destination = folder.appendingPathComponent(leaf)
         try FileManager.default.copyItem(at: url, to: destination)
         return destination
     }

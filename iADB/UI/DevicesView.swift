@@ -1,6 +1,7 @@
 import ComposableArchitecture
 import SwiftUI
 import UIKit
+import UniformTypeIdentifiers
 
 struct DevicesView: View {
     @Bindable var store: StoreOf<AppFeature>
@@ -9,6 +10,8 @@ struct DevicesView: View {
     @State private var manualError: String?
     @State private var showPairing = false
     @State private var confirmReset = false
+    @State private var showKeyImporter = false
+    @State private var keyImportError: String?
 
     var body: some View {
         ScrollView {
@@ -21,9 +24,7 @@ struct DevicesView: View {
                 manualCard
                 nearbyCard
                 savedCard
-                PillButton(title: "Reset this iPhone's ADB identity", systemImage: "key.slash", role: .danger, expands: true) {
-                    confirmReset = true
-                }
+                identityCard
             }
             .padding(16)
             .readableWidth()
@@ -33,6 +34,18 @@ struct DevicesView: View {
         .connectionToolbar(store)
         .refreshable {
             store.send(.connection(.refreshDiscovery))
+        }
+        // The reducer decides what to copy; the pasteboard belongs to UIKit.
+        .task(id: store.connection.identityClipboard) {
+            guard let text = store.connection.identityClipboard else { return }
+            UIPasteboard.general.string = text
+            store.send(.connection(.identityClipboardCopied))
+        }
+        .fileImporter(
+            isPresented: $showKeyImporter,
+            allowedContentTypes: keyImporterTypes
+        ) { result in
+            importKey(result)
         }
         .sheet(isPresented: $showPairing, onDismiss: {
             if store.pairing.isPairing {
@@ -100,14 +113,25 @@ struct DevicesView: View {
                     .font(.subheadline.weight(.semibold))
                     .foregroundStyle(Theme.sky)
                 }
-                Text(LocalizedStringKey(store.connection.discoveryPaused ? "Discovery is paused." : "Watching the local network for wireless debugging."))
-                    .font(.footnote)
-                    .foregroundStyle(Theme.secondary)
-                if store.connection.discoveredDevices.isEmpty {
-                    Text("No devices yet. Enable Wireless debugging, and keep the phone on the same network.")
+                if let hint = store.connection.discoveryHint {
+                    Text(verbatim: hint)
                         .font(.footnote)
-                        .foregroundStyle(Theme.tertiary)
-                        .padding(.vertical, 8)
+                        .foregroundStyle(Theme.sky)
+                } else {
+                    Text(LocalizedStringKey(store.connection.discoveryPaused ? "Discovery is paused." : "Watching the local network for wireless debugging."))
+                        .font(.footnote)
+                        .foregroundStyle(Theme.secondary)
+                }
+                if store.connection.discoveredDevices.isEmpty {
+                    VStack(alignment: .leading, spacing: 6) {
+                        Text("No devices yet. Enable Wireless debugging, and keep the phone on the same network.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.tertiary)
+                        Text("On a car head unit hotspot, iADB also asks each address over SSDP and probes port 5555 directly.")
+                            .font(.footnote)
+                            .foregroundStyle(Theme.tertiary)
+                    }
+                    .padding(.vertical, 8)
                 } else {
                     ForEach(store.connection.discoveredDevices) { device in
                         discoveredRow(device)
@@ -153,12 +177,22 @@ struct DevicesView: View {
                     Text(device.name.isEmpty ? device.host : device.name)
                         .font(.body.weight(.semibold))
                         .foregroundStyle(Theme.cream)
-                    Text("\(device.host):\(device.port)")
-                        .font(.caption.monospacedDigit())
-                        .foregroundStyle(Theme.secondary)
+                    HStack(spacing: 6) {
+                        Text("\(device.host):\(device.port)")
+                            .font(.caption.monospacedDigit())
+                            .foregroundStyle(Theme.secondary)
+                        Text(device.source.label)
+                            .font(.caption2.weight(.semibold))
+                            .foregroundStyle(sourceTint(device.source))
+                    }
                 }
                 Spacer()
                 statusPill(device.isPaired ? "Paired" : "New", tint: device.isPaired ? Theme.accent : Theme.sky)
+            }
+            if let model = device.modelName, !model.isEmpty, model != device.name {
+                Text(verbatim: model)
+                    .font(.caption)
+                    .foregroundStyle(Theme.tertiary)
             }
             HStack(spacing: 8) {
                 PillButton(title: "Connect", systemImage: "bolt.horizontal", disabled: store.connection.connectionState == .connecting) {
@@ -173,6 +207,22 @@ struct DevicesView: View {
         }
         .padding(12)
         .background(Theme.raised.opacity(0.55), in: RoundedRectangle(cornerRadius: 16, style: .continuous))
+    }
+
+    /// Keeps the discovery channels visually distinguishable: when nothing
+    /// shows up, which channel is silent is the first thing worth knowing.
+    ///
+    /// Colour encodes confidence rather than identity — green for a channel
+    /// that already knows the address (mDNS, gateway), blue for a protocol
+    /// answer, amber for a blind walk. The label carries the channel name.
+    private func sourceTint(_ source: DiscoverySource) -> Color {
+        switch source {
+        case .bonjour: return Theme.accent
+        case .gateway: return Theme.accent
+        case .ssdp: return Theme.sky
+        case .probe: return Theme.warning
+        case .manual: return Theme.tertiary
+        }
     }
 
     private func savedRow(_ device: PairedDevice) -> some View {
@@ -223,6 +273,88 @@ struct DevicesView: View {
                 .foregroundStyle(Theme.cream)
                 .padding(12)
                 .background(Theme.ink.opacity(0.55), in: RoundedRectangle(cornerRadius: 12, style: .continuous))
+        }
+    }
+
+    private var identityCard: some View {
+        LabCard {
+            VStack(alignment: .leading, spacing: 12) {
+                sectionTitle("This iPhone's ADB identity", symbol: "key.fill")
+                Text("Import the adbkey from your computer to skip re-authorizing, or export this one before reinstalling.")
+                    .font(.caption)
+                    .foregroundStyle(Theme.secondary)
+                Text(verbatim: store.connection.identityFingerprint ?? String(localized: "No key yet"))
+                    .font(.caption2.monospaced())
+                    .foregroundStyle(store.connection.identityFingerprint == nil ? Theme.tertiary : Theme.cream)
+                    .lineLimit(2)
+                    .truncationMode(.middle)
+                HStack(spacing: 8) {
+                    PillButton(title: "Public key", systemImage: "doc.on.doc", role: .secondary, expands: true) {
+                        keyImportError = nil
+                        store.send(.connection(.copyPublicKey))
+                    }
+                    PillButton(title: "Private key", systemImage: "key", role: .secondary, expands: true) {
+                        keyImportError = nil
+                        store.send(.connection(.exportIdentityKey))
+                    }
+                }
+                PillButton(title: "Import key from file", systemImage: "square.and.arrow.down", role: .secondary, expands: true) {
+                    keyImportError = nil
+                    showKeyImporter = true
+                }
+                if let note = store.connection.identityNote {
+                    identityNoteView(note)
+                        .font(.caption)
+                }
+                if let keyImportError {
+                    Text(verbatim: keyImportError)
+                        .font(.caption)
+                        .foregroundStyle(Theme.danger)
+                }
+                PillButton(title: "Reset this iPhone's ADB identity", systemImage: "key.slash", role: .danger, expands: true) {
+                    confirmReset = true
+                }
+            }
+        }
+    }
+
+    @ViewBuilder
+    private func identityNoteView(_ note: ConnectionFeature.IdentityNote) -> some View {
+        switch note {
+        case .privateKeyCopied:
+            Text("Private key copied. Paste it into a .pem file to keep a backup.")
+                .foregroundStyle(Theme.info)
+        case .keyImported:
+            Text("Key imported. The device will ask for authorization again.")
+                .foregroundStyle(Theme.info)
+        case .failed(let error):
+            Text(verbatim: error.localizedDescription)
+                .foregroundStyle(Theme.danger)
+        }
+    }
+
+    /// `.pem` has no registered system type, so the picker also offers plain
+    /// text and raw data — an `adbkey` or `adbkey.pub` picked from Files.
+    private var keyImporterTypes: [UTType] {
+        [UTType(filenameExtension: "pem") ?? .plainText, .plainText, .data]
+    }
+
+    private func importKey(_ result: Result<URL, Error>) {
+        switch result {
+        case .failure(let error):
+            // Cancelling the picker is not a failure worth a red line.
+            if (error as? CocoaError)?.code != .userCancelled {
+                keyImportError = error.localizedDescription
+            }
+        case .success(let url):
+            do {
+                let staged = try ImportStaging.copySecurityScopedFile(url)
+                defer { try? FileManager.default.removeItem(at: staged) }
+                let text = try String(contentsOf: staged, encoding: .utf8)
+                store.send(.connection(.importIdentityKey(text)))
+            } catch {
+                keyImportError = error.localizedDescription
+            }
         }
     }
 

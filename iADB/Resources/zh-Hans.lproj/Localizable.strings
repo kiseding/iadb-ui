@@ -28,6 +28,14 @@
 "Discovery is paused." = "发现已暂停。";
 "Watching the local network for wireless debugging." = "正在监听局域网中的无线调试设备。";
 "No devices yet. Enable Wireless debugging, and keep the phone on the same network." = "还没有设备。请打开无线调试，并让这台 iPhone 和设备处于同一网络。";
+"Waiting for the Wi-Fi network. Discovery resumes automatically." = "正在等待 Wi-Fi 网络，恢复后会自动继续扫描。";
+"Network changed. Scanning again." = "网络已切换，正在重新扫描。";
+"On a car head unit hotspot, iADB also asks each address over SSDP and probes port 5555 directly." = "连接车机热点时，iADB 还会用 SSDP 逐一询问各地址，并直接探测 5555 端口。";
+"mDNS" = "mDNS";
+"SSDP" = "SSDP";
+"Probe" = "探测";
+"Gateway" = "网关";
+"Manual" = "手动";
 "Saved" = "已保存";
 "Paired devices stay here, including the name Android reported." = "配对过的设备会留在这里，包括 Android 报告的名称。";
 "Pair with code" = "用配对码配对";
@@ -59,6 +67,12 @@
 "Uninstall" = "卸载";
 "Clear data" = "清除数据";
 "Choose an .apk file." = "请选择 .apk 文件。";
+"Uploading" = "正在上传";
+"Installing on device" = "设备正在安装";
+"Installed" = "安装完成";
+"Preparing the upload" = "正在准备上传";
+"The device is unpacking the package" = "解包和优化可能需要几秒";
+"Refreshing the package list" = "正在刷新应用列表";
 
 "No device session" = "还没有设备会话";
 "Connect from Devices. iADB will read model, Android version, battery, and the build fingerprint." = "请先在「设备」里连接。iADB 会读取型号、Android 版本、电量和构建指纹。";
@@ -146,3 +160,13 @@
 "Waiting for adbd" = "正在等待 adbd";
 "Pair, then connect over Wi-Fi" = "先配对，再通过 Wi-Fi 连接";
 "Invalid pairing address or code" = "配对地址或配对码无效";
+
+"This iPhone's ADB identity" = "本机 ADB 身份";
+"Import the adbkey from your computer to skip re-authorizing, or export this one before reinstalling." = "从电脑导入 adbkey 可以免去重新授权；重装前也建议先导出这一份。";
+"No key yet" = "尚未生成密钥";
+"Public key" = "公钥";
+"Private key" = "私钥";
+"Import key from file" = "从文件导入密钥";
+"Grant runtime permissions" = "授予运行时权限";
+"Private key copied. Paste it into a .pem file to keep a backup." = "私钥已复制，粘贴保存成 .pem 文件即可备份。";
+"Key imported. The device will ask for authorization again." = "密钥已导入，设备下次连接时会重新询问授权。";

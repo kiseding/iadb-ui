@@ -13,6 +13,14 @@ struct ConnectionFeature {
         var errorMessage: String?
         /// User explicitly stopped Bonjour. Automatic refreshes must not resume it.
         var discoveryPaused = false
+        /// Recoverable network state, shown as a quiet note instead of an error.
+        var discoveryHint: String?
+        /// SHA-256 of the stored ADB public key, or `nil` before one exists.
+        var identityFingerprint: String?
+        /// One-line feedback for the key import and export actions.
+        var identityNote: IdentityNote?
+        /// Text the view should place on the pasteboard, then clear.
+        var identityClipboard: String?
     }
 
     enum Action {
@@ -31,6 +39,25 @@ struct ConnectionFeature {
         case deviceForgotten(Result<[PairedDevice], Error>)
         case resetIdentity
         case identityReset(Result<Void, Error>)
+        /// Re-reads the stored key fingerprint for the identity card.
+        case refreshIdentity
+        case copyPublicKey
+        case exportIdentityKey
+        case importIdentityKey(String)
+        case identityTextReady(String)
+        case identityClipboardCopied
+        case identityNote(IdentityNote?)
+        /// The connected device reported its model, so discovery can label the
+        /// address next time even when it never answers SSDP.
+        case deviceNameRemembered(host: String, name: String)
+    }
+
+    /// Outcome of a key action, kept free of localized text so the reducer stays
+    /// testable and the view owns the wording.
+    enum IdentityNote: Equatable {
+        case privateKeyCopied
+        case keyImported
+        case failed(ADBError)
     }
 
     private enum CancelID { case discovery, connection }
@@ -41,6 +68,12 @@ struct ConnectionFeature {
 
     var body: some ReducerOf<Self> {
         Reduce { state, action in
+            // Key work only throws ADBError; the fallback keeps a stray system
+            // error visible instead of swallowing it.
+            func identityNote(for error: Error) -> IdentityNote {
+                .failed(error as? ADBError ?? .cryptoError(error.localizedDescription))
+            }
+
             switch action {
             case .loadSavedDevices:
                 return .run { send in
@@ -60,9 +93,16 @@ struct ConnectionFeature {
                 state.discoveryPaused = false
                 state.isScanning = true
                 state.errorMessage = nil
-                let keys = state.pairedDevices.map(\.publicKey)
+                state.discoveryHint = nil
+                let context = DiscoveryContext(
+                    pairedKeys: state.pairedDevices.map(\.publicKey),
+                    knownEndpoints: state.pairedDevices.compactMap { device -> DiscoveryEndpoint? in
+                        guard let port = device.lastPort, !device.lastHost.isEmpty else { return nil }
+                        return DiscoveryEndpoint(host: device.lastHost, port: port)
+                    }
+                )
                 return .run { send in
-                    for await event in discoveryClient.start(keys) {
+                    for await event in discoveryClient.start(context) {
                         await send(.discoveryEvent(event))
                     }
                 }
@@ -70,14 +110,26 @@ struct ConnectionFeature {
 
             case .discoveryEvent(.ready):
                 state.isScanning = false
+                state.discoveryHint = nil
+                return .none
+
+            case .discoveryEvent(.waiting(let message)):
+                // The network is between states — a hotspot hand-off looks
+                // exactly like this. Keep the spinner alive and say what is
+                // happening instead of flashing a failure banner.
+                state.isScanning = true
+                state.errorMessage = nil
+                state.discoveryHint = message
                 return .none
 
             case .discoveryEvent(.devices(let devices)):
                 state.discoveredDevices = devices
+                state.discoveryHint = nil
                 return .none
 
             case .discoveryEvent(.failure(let message)):
                 state.isScanning = false
+                state.discoveryHint = nil
                 state.errorMessage = message
                 return .none
 
@@ -88,6 +140,7 @@ struct ConnectionFeature {
             case .stopDiscovery:
                 state.discoveryPaused = true
                 state.isScanning = false
+                state.discoveryHint = nil
                 discoveryClient.stop()
                 return .cancel(id: CancelID.discovery)
 
@@ -107,6 +160,31 @@ struct ConnectionFeature {
             case .connectionFinished(let device, .success):
                 state.connectedDevice = device
                 state.connectionState = .connected
+                // Remember the exact endpoint. A wireless-debugging port is
+                // random per boot, so the address that just worked is the only
+                // reliable way to find the device next time.
+                discoveryClient.rememberEndpoint(
+                    DiscoveryEndpoint(host: device.host, port: device.port)
+                )
+                // Ask the device what it is. This is the only name a head unit
+                // that skips SSDP and hides from mDNS will ever get.
+                let host = device.host
+                return .run { send in
+                    guard let model = try? await adbClient.getDeviceProperty("ro.product.model"),
+                          !model.isEmpty else { return }
+                    discoveryClient.rememberName(host, model)
+                    await send(.deviceNameRemembered(host: host, name: model))
+                }
+
+            case .deviceNameRemembered(let host, let name):
+                for index in state.discoveredDevices.indices {
+                    // A real model beats "ADB 192.168.43.155", but an SSDP
+                    // friendly name is what the vendor chose to show, so it
+                    // stays.
+                    guard state.discoveredDevices[index].host == host,
+                          state.discoveredDevices[index].source == .probe else { continue }
+                    state.discoveredDevices[index].name = name
+                }
                 return .none
 
             case .connectionFinished(_, .failure(let error)):
@@ -170,10 +248,56 @@ struct ConnectionFeature {
 
             case .identityReset(.success):
                 state = State()
-                return .none
+                return .send(.refreshIdentity)
 
             case .identityReset(.failure(let error)):
                 state.errorMessage = error.localizedDescription
+                return .none
+
+            case .refreshIdentity:
+                state.identityFingerprint = adbClient.identityFingerprint()
+                return .none
+
+            case .copyPublicKey:
+                return .run { send in
+                    do {
+                        await send(.identityTextReady(try adbClient.publicKeyText()))
+                    } catch {
+                        await send(.identityNote(identityNote(for: error)))
+                    }
+                }
+
+            case .exportIdentityKey:
+                return .run { send in
+                    do {
+                        await send(.identityTextReady(try adbClient.exportPrivateKeyPEM()))
+                        await send(.identityNote(.privateKeyCopied))
+                    } catch {
+                        await send(.identityNote(identityNote(for: error)))
+                    }
+                }
+
+            case .importIdentityKey(let pem):
+                return .run { send in
+                    do {
+                        try adbClient.importPrivateKeyPEM(pem)
+                        await send(.refreshIdentity)
+                        await send(.identityNote(.keyImported))
+                    } catch {
+                        await send(.identityNote(identityNote(for: error)))
+                    }
+                }
+
+            case .identityTextReady(let text):
+                state.identityClipboard = text
+                return .none
+
+            case .identityClipboardCopied:
+                state.identityClipboard = nil
+                return .none
+
+            case .identityNote(let note):
+                state.identityNote = note
                 return .none
             }
         }

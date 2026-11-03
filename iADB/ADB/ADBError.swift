@@ -1,7 +1,7 @@
 import Foundation
 
 /// All possible ADB-related errors
-enum ADBError: LocalizedError {
+enum ADBError: LocalizedError, Equatable {
     case notConnected
     case connectionFailed(String)
     case connectionClosed

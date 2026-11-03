@@ -53,6 +53,7 @@ struct AppFeature {
             case .bootstrap:
                 return .merge(
                     .send(.connection(.loadSavedDevices)),
+                    .send(.connection(.refreshIdentity)),
                     .send(.shell(.loadHistory)),
                     .send(.screenshots(.load))
                 )

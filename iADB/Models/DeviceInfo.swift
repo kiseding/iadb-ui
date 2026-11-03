@@ -13,6 +13,33 @@ struct DeviceDetails: Equatable {
     var deviceName: String = ""
 }
 
+/// How a device was found. Shown in the UI because the channels fail
+/// independently and the answer decides what to fix when nothing appears.
+enum DiscoverySource: String, Equatable, Sendable {
+    /// Bonjour/mDNS service record. Carries the real ADB service name.
+    case bonjour
+    /// SSDP/UPnP responder. Survives multicast filtering, and often knows the
+    /// marketing model name of the device.
+    case ssdp
+    /// Direct TCP probe of port 5555.
+    case probe
+    /// The default gateway of the current network, dialled as soon as the run
+    /// starts. Only matches when the device hosts the hotspot itself.
+    case gateway
+    /// Typed in by hand.
+    case manual
+
+    var label: String {
+        switch self {
+        case .bonjour: return String(localized: "mDNS")
+        case .ssdp: return String(localized: "SSDP")
+        case .probe: return String(localized: "Probe")
+        case .gateway: return String(localized: "Gateway")
+        case .manual: return String(localized: "Manual")
+        }
+    }
+}
+
 struct DiscoveredDevice: Identifiable, Equatable {
     let id: String
     var name: String
@@ -21,6 +48,10 @@ struct DiscoveredDevice: Identifiable, Equatable {
     var isPaired: Bool
     /// Порт pairing-сервиса (появляется когда на Android нажали "Pair with code")
     var pairingPort: UInt16?
+    /// Which channel produced this row.
+    var source: DiscoverySource = .manual
+    /// `<modelName>` from the UPnP description, when SSDP supplied one.
+    var modelName: String?
 }
 
 struct PairedDevice: Identifiable, Codable, Equatable, Sendable {

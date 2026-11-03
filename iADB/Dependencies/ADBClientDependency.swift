@@ -1,12 +1,38 @@
 import Foundation
 import ComposableArchitecture
 
+/// Carries install progress across the escaping boundary inside `withClient`.
+///
+/// Every call below is funneled through `withClient`, whose operation closure is
+/// `@escaping`. A closure argument cannot escape with it — the compiler rejects
+/// capturing a non-escaping parameter that way — so the callback is boxed in a
+/// value that can be captured freely.
+final class TransferProgressReporter: Sendable {
+    private let handler: @Sendable (TransferProgress) async -> Void
+
+    init(handler: @Sendable @escaping (TransferProgress) async -> Void) {
+        self.handler = handler
+    }
+
+    func report(_ progress: TransferProgress) async {
+        await handler(progress)
+    }
+}
+
 /// TCA dependency wrapping ADBClient for testable ADB operations
 struct ADBClientDependency: Sendable {
     var connect: @Sendable (_ host: String, _ port: UInt16) async throws -> String
     var disconnect: @Sendable () -> Void
     var resetIdentity: @Sendable () async throws -> Void
     var completeIdentityReset: @Sendable () throws -> Void
+    /// SHA-256 of the stored public key, or `nil` before an identity exists.
+    var identityFingerprint: @Sendable () -> String?
+    /// Public key in `adbkey.pub` format.
+    var publicKeyText: @Sendable () throws -> String
+    /// Private key as a PKCS#8 PEM, so it can move to or from a desktop.
+    var exportPrivateKeyPEM: @Sendable () throws -> String
+    /// Replaces the stored identity with the key in the given PEM.
+    var importPrivateKeyPEM: @Sendable (String) throws -> Void
     var shell: @Sendable (_ command: String) async throws -> String
     var openShellCommand: @Sendable (
         _ command: String
@@ -23,6 +49,12 @@ struct ADBClientDependency: Sendable {
     var listDirectoryEntries: @Sendable (_ path: String) async throws -> [FileEntry]
     var pushData: @Sendable (_ data: Data, _ remotePath: String, _ mode: UInt32) async throws -> Void
     var pushFile: @Sendable (_ localURL: URL, _ remotePath: String, _ mode: UInt32) async throws -> Void
+    var pushFileWithProgress: @Sendable (
+        _ localURL: URL,
+        _ remotePath: String,
+        _ mode: UInt32,
+        _ reporter: TransferProgressReporter
+    ) async throws -> Void
     var pullFileTo: @Sendable (_ remotePath: String, _ localURL: URL) async throws -> Void
     var takeScreenshot: @Sendable () async throws -> Data
     var openLogcatStream: @Sendable () async throws -> ADBStream
@@ -118,6 +150,18 @@ extension ADBClientDependency: DependencyKey {
             completeIdentityReset: {
                 try ADBCrypto.clearIdentityResetPending()
             },
+            identityFingerprint: {
+                ADBCrypto.storedIdentityFingerprint()
+            },
+            publicKeyText: {
+                try ADBCrypto.publicKeyText()
+            },
+            exportPrivateKeyPEM: {
+                try ADBCrypto.exportPrivateKeyPEM()
+            },
+            importPrivateKeyPEM: { pem in
+                try ADBCrypto.importPrivateKeyPEM(pem)
+            },
             shell: { command in
                 try await withClient { try await $0.shell(command) }
             },
@@ -179,6 +223,17 @@ extension ADBClientDependency: DependencyKey {
             pushFile: { localURL, remotePath, mode in
                 try await withClient { try await $0.pushFile(from: localURL, to: remotePath, mode: mode) }
             },
+            pushFileWithProgress: { localURL, remotePath, mode, reporter in
+                try await withClient { client in
+                    try await client.pushFile(
+                        from: localURL,
+                        to: remotePath,
+                        mode: mode
+                    ) { progress in
+                        await reporter.report(progress)
+                    }
+                }
+            },
             pullFileTo: { remotePath, localURL in
                 try await withClient { try await $0.pullFile(remotePath: remotePath, to: localURL) }
             },
@@ -200,6 +255,10 @@ extension ADBClientDependency: DependencyKey {
             disconnect: unimplemented("ADBClientDependency.disconnect"),
             resetIdentity: unimplemented("ADBClientDependency.resetIdentity"),
             completeIdentityReset: unimplemented("ADBClientDependency.completeIdentityReset"),
+            identityFingerprint: { nil },
+            publicKeyText: { "" },
+            exportPrivateKeyPEM: { "" },
+            importPrivateKeyPEM: { _ in },
             shell: unimplemented("ADBClientDependency.shell"),
             openShellCommand: unimplemented("ADBClientDependency.openShellCommand"),
             getDeviceProperty: unimplemented("ADBClientDependency.getDeviceProperty"),
@@ -214,6 +273,13 @@ extension ADBClientDependency: DependencyKey {
             listDirectoryEntries: unimplemented("ADBClientDependency.listDirectoryEntries"),
             pushData: unimplemented("ADBClientDependency.pushData"),
             pushFile: unimplemented("ADBClientDependency.pushFile"),
+            // `unimplemented` cannot infer a result type for this member: its
+            // signature ends in a closure whose own parameter is a class, and
+            // the call resolves to an overload that was retired. Throwing keeps
+            // a forgotten stub visible as an unexpected error in `TestStore`.
+            pushFileWithProgress: { _, _, _, _ in
+                throw ADBError.fileTransferFailed("pushFileWithProgress is not stubbed")
+            },
             pullFileTo: unimplemented("ADBClientDependency.pullFileTo"),
             takeScreenshot: unimplemented("ADBClientDependency.takeScreenshot"),
             openLogcatStream: unimplemented("ADBClientDependency.openLogcatStream"),

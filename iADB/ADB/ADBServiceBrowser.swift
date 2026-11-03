@@ -142,8 +142,12 @@ final class ADBServiceBrowser: @unchecked Sendable {
                             }
                         }
 
-                        // Resolve the service to get host and port.
-                        let connection = NWConnection(to: result.endpoint, using: NWParameters())
+                        // Resolve the service to get host and port. Network
+                        // parameters carry no transport by default, which
+                        // leaves the resolver waiting forever on a Bonjour
+                        // endpoint; ask for TCP explicitly so pairing can
+                        // resolve the advertised port.
+                        let connection = NWConnection(to: result.endpoint, using: .tcp)
                         guard session.attach(resolver: connection) else {
                             connection.cancel()
                             return
