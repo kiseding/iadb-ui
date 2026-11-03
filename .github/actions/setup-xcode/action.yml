@@ -10,6 +10,21 @@ runs:
         xcodebuild -version
         xcode-select -p
 
+    # swift-syntax alone takes ten minutes to build from scratch, and it is a
+    # build-time dependency of the TCA macros, so it lands on the critical path
+    # of every run. Both DerivedData locations are cached: the default one is
+    # what `xcodebuild test` uses, the other belongs to the packaging script.
+    - name: Cache Swift packages
+      uses: actions/cache@v4
+      with:
+        path: |
+          ~/Library/Caches/org.swift.swiftpm
+          ~/Library/Developer/Xcode/DerivedData
+          build/DerivedData
+        key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+        restore-keys: |
+          spm-${{ runner.os }}-
+
     - name: Generate deterministic project
       shell: bash
       run: |

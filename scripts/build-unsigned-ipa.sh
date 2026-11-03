@@ -6,6 +6,10 @@ cd "$(dirname "$0")/.."
 build_number="${BUILD_NUMBER:-}"
 requested_version="${MARKETING_VERSION:-}"
 output_directory="${OUTPUT_DIRECTORY:-build/unsigned}"
+# Kept outside the output directory on purpose: the products are wiped on every
+# run, but the package checkouts and their compiled objects are the expensive
+# part and have to survive so CI can cache them.
+derived_data_path="${DERIVED_DATA_PATH:-build/DerivedData}"
 
 if [[ ! "$build_number" =~ ^[0-9]+([.][0-9]+){0,2}$ ]]; then
   echo "BUILD_NUMBER must contain one to three numeric components" >&2
@@ -36,7 +40,7 @@ xcodebuild build \
   -scheme iADB \
   -configuration Release \
   -destination 'generic/platform=iOS' \
-  -derivedDataPath "$output_directory/DerivedData" \
+  -derivedDataPath "$derived_data_path" \
   -skipMacroValidation \
   -skipPackagePluginValidation \
   CONFIGURATION_BUILD_DIR="$output_directory/products" \
