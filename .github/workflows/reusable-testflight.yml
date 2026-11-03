@@ -30,7 +30,7 @@ permissions:
 
 jobs:
   upload:
-    runs-on: macos-26
+    runs-on: macos-15-intel
     timeout-minutes: 60
 
     steps:

@@ -5,11 +5,8 @@ name: Verify build
 # takes about seventeen minutes; this exists to answer two questions quickly:
 # does everything still compile, and do the tests pass?
 #
-# Two runner images are requested at once because macOS capacity is allocated
-# unevenly: a job can sit queued with no runner for fifteen minutes and then be
-# cancelled without ever producing a step. Whichever image gets a runner first
-# finishes the check, and fail-fast is off so a queue timeout on one does not
-# take the other with it.
+# Use the Intel pool while GitHub reports macOS arm64 capacity constraints.
+# Both macos-15 and macos-26 currently target the same constrained arm64 pool.
 on:
   workflow_dispatch:
 
@@ -18,12 +15,8 @@ permissions:
 
 jobs:
   compile:
-    runs-on: ${{ matrix.os }}
+    runs-on: macos-15-intel
     timeout-minutes: 45
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [macos-26, macos-15]
 
     steps:
       - uses: actions/checkout@v4
@@ -90,7 +83,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: verify-diagnostics-${{ matrix.os }}
+          name: verify-diagnostics-${{ runner.arch }}
           path: |
             build/*.log
             build/TestResults.xcresult

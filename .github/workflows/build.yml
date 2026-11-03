@@ -10,7 +10,7 @@ permissions:
 
 jobs:
   verify:
-    runs-on: macos-26
+    runs-on: macos-15-intel
     timeout-minutes: 45
 
     steps:

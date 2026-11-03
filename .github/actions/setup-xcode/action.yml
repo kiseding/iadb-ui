@@ -4,11 +4,13 @@ description: Verify Xcode, install XcodeGen when needed, and generate the projec
 runs:
   using: composite
   steps:
-    - name: Verify Xcode
+    - name: Select Xcode 26.3
       shell: bash
       run: |
+        sudo xcode-select -s /Applications/Xcode_26.3.app/Contents/Developer
         xcodebuild -version
         xcode-select -p
+        echo "XCODE_CACHE_VERSION=$(xcodebuild -version | tr '\n' '-')" >> "$GITHUB_ENV"
 
     # swift-syntax alone takes ten minutes to build from scratch, and it is a
     # build-time dependency of the TCA macros, so it lands on the critical path
@@ -21,9 +23,9 @@ runs:
           ~/Library/Caches/org.swift.swiftpm
           ~/Library/Developer/Xcode/DerivedData
           build/DerivedData
-        key: spm-${{ runner.os }}-${{ hashFiles('Package.resolved') }}
+        key: spm-${{ runner.os }}-${{ runner.arch }}-${{ env.XCODE_CACHE_VERSION }}-${{ hashFiles('Package.resolved') }}
         restore-keys: |
-          spm-${{ runner.os }}-
+          spm-${{ runner.os }}-${{ runner.arch }}-${{ env.XCODE_CACHE_VERSION }}-
 
     - name: Generate deterministic project
       shell: bash
